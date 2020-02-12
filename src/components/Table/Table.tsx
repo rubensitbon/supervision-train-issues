@@ -40,41 +40,6 @@ interface MyData {
   check_time: number;
 }
 
-function createMyData(
-  id: number,
-  train: number,
-  X: number,
-  Y: number,
-  battery_voltage: number,
-  rail_voltage: number,
-  error_bit: number,
-  error_time: number,
-  label: string,
-  check_time: number
-): MyData {
-  return {
-    id,
-    train,
-    X,
-    Y,
-    battery_voltage,
-    rail_voltage,
-    error_bit,
-    error_time,
-    label,
-    check_time
-  };
-}
-
-const myRows = [
-  createMyData(1, 1, 0, 0, 12, 12, 0, 1581308213, 'undefined', 0),
-  createMyData(2, 2, 2, 2, 12, 12, 0, 1581308313, 'undefined', 0),
-  createMyData(3, 3, 3, 3, 12, 0, 1, 1581308413, 'undefined', 0),
-  createMyData(4, 4, 4, 4, 12, 0, 1, 1581308513, 'rail', 1581408213),
-  createMyData(5, 5, 5, 5, 0, 12, 1, 1581308613, 'train', 1581409213),
-  createMyData(6, 6, 6, 6, 12, 12, 0, 1581308713, 'undefined', 0)
-];
-
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
   if (b[orderBy] < a[orderBy]) {
     return -1;
@@ -392,11 +357,19 @@ export default function EnhancedTable() {
   const [selected, setSelected] = React.useState<number[]>([]);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
-  const [rows, setRows] = React.useState(
-    myRows.filter(row => row.error_bit === 1)
-  );
+  const [data, setData] = React.useState<MyData[]>([]);
+  const [rows, setRows] = React.useState(data);
   const [isFilter, setIsFilter] = React.useState(true);
   const [update, setUpdate] = React.useState('undefined');
+
+  React.useEffect(() => {
+    api.get('/fetch').then(result => {
+      setData(result.data);
+      isFilter
+        ? setRows(result.data.filter((row: MyData) => row.error_bit === 1))
+        : setRows(result.data);
+    });
+  }, [isFilter]);
 
   const handleRequestSort = (
     event: React.MouseEvent<unknown>,
@@ -409,7 +382,7 @@ export default function EnhancedTable() {
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelecteds = rows.map(n => n.id);
+      const newSelecteds = rows && rows.map((n: MyData) => n.id);
       setSelected(newSelecteds);
       return;
     }
@@ -438,8 +411,8 @@ export default function EnhancedTable() {
 
   const handleFilter = () => {
     isFilter
-      ? setRows(myRows)
-      : setRows(myRows.filter(row => row.error_bit === 1));
+      ? setRows(data)
+      : setRows(data.filter((row: MyData) => row.error_bit === 1));
     setIsFilter(!isFilter);
   };
 
@@ -455,18 +428,18 @@ export default function EnhancedTable() {
   };
 
   const handleSubmitUpdate = () => {
-    const intermediaryRows = myRows;
+    const intermediaryRows = data;
     const rowsToUpdate: any[] = [];
 
-    intermediaryRows.forEach(myRow => {
-      if (selected.includes(myRow.id)) {
-        myRow.label = update;
-        rowsToUpdate.push(myRow);
+    intermediaryRows.forEach((intermediaryRow: MyData) => {
+      if (selected.includes(intermediaryRow.id)) {
+        intermediaryRow.label = update;
+        rowsToUpdate.push(intermediaryRow);
       }
     });
 
     isFilter
-      ? setRows(intermediaryRows.filter(row => row.error_bit === 1))
+      ? setRows(intermediaryRows.filter((row: MyData) => row.error_bit === 1))
       : setRows(intermediaryRows);
 
     setSelected([]);
@@ -517,6 +490,8 @@ export default function EnhancedTable() {
               {stableSort(rows, getComparator(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
+                  console.log('IN MAP : row', row);
+                  console.log('IN MAP : row.id', row.id);
                   const isItemSelected = isSelected(row.id);
                   const labelId = `enhanced-table-checkbox-${index}`;
 
@@ -555,7 +530,7 @@ export default function EnhancedTable() {
                       <TableCell align="right">{row.battery_voltage}</TableCell>
                       <TableCell align="right">{row.rail_voltage}</TableCell>
                       <TableCell align="right">
-                        {row.error_bit === 0 ? 'Erreur' : "Pas d'erreur"}
+                        {row.error_bit === 1 ? 'Erreur' : "Pas d'erreur"}
                       </TableCell>
                       <TableCell align="right">{row.error_time}</TableCell>
                       <TableCell align="right">{row.label}</TableCell>
