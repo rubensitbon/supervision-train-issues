@@ -20,8 +20,10 @@ import Paper from '@material-ui/core/Paper';
 import Checkbox from '@material-ui/core/Checkbox';
 import IconButton from '@material-ui/core/IconButton';
 import Tooltip from '@material-ui/core/Tooltip';
-import DeleteIcon from '@material-ui/icons/Delete';
+import SendIcon from '@material-ui/icons/Send';
 import FilterListIcon from '@material-ui/icons/FilterList';
+import TextField from '@material-ui/core/TextField';
+import MenuItem from '@material-ui/core/MenuItem';
 
 interface MyData {
   trainId: number;
@@ -253,13 +255,40 @@ const useToolbarStyles = makeStyles((theme: Theme) =>
   })
 );
 
+const updateList = [
+  {
+    value: 'undefined',
+    label: 'Undefined'
+  },
+  {
+    value: 'train',
+    label: 'Train'
+  },
+  {
+    value: 'rail',
+    label: 'Rail'
+  },
+  {
+    value: 'clear',
+    label: 'Clear'
+  }
+];
+
 interface EnhancedTableToolbarProps {
   numSelected: number;
+  handleFilter: () => void;
+  isFilter: boolean;
+  update: string;
+  setUpdate: (value: string) => void;
 }
 
 const EnhancedTableToolbar = (props: EnhancedTableToolbarProps) => {
   const classes = useToolbarStyles();
-  const { numSelected } = props;
+  const { numSelected, handleFilter, isFilter, update, setUpdate } = props;
+
+  const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setUpdate(event.target.value);
+  };
 
   return (
     <Toolbar
@@ -281,14 +310,34 @@ const EnhancedTableToolbar = (props: EnhancedTableToolbarProps) => {
         </Typography>
       )}
       {numSelected > 0 ? (
-        <Tooltip title="Delete">
-          <IconButton aria-label="delete">
-            <DeleteIcon />
-          </IconButton>
-        </Tooltip>
+        <>
+          <TextField
+            select
+            label="Label"
+            value={update}
+            onChange={handleChange}
+            helperText="Select the Label"
+            style={{ width: '300px', marginRight: '15px' }}
+          >
+            {updateList.map(option => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
+          <Tooltip title="Delete">
+            <IconButton aria-label="delete">
+              <SendIcon />
+            </IconButton>
+          </Tooltip>
+        </>
       ) : (
         <Tooltip title="Filter list">
-          <IconButton aria-label="filter list">
+          <IconButton
+            onClick={handleFilter}
+            color={isFilter ? 'primary' : 'secondary'}
+            aria-label="filter list"
+          >
             <FilterListIcon />
           </IconButton>
         </Tooltip>
@@ -330,6 +379,11 @@ export default function EnhancedTable() {
   const [selected, setSelected] = React.useState<number[]>([]);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [rows, setRows] = React.useState(
+    myRows.filter(row => row.errorBit === 'true')
+  );
+  const [isFilter, setIsFilter] = React.useState(true);
+  const [update, setUpdate] = React.useState('undefined');
 
   const handleRequestSort = (
     event: React.MouseEvent<unknown>,
@@ -342,7 +396,7 @@ export default function EnhancedTable() {
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelecteds = myRows.map(n => n.trainId);
+      const newSelecteds = rows.map(n => n.trainId);
       setSelected(newSelecteds);
       return;
     }
@@ -369,6 +423,13 @@ export default function EnhancedTable() {
     setSelected(newSelected);
   };
 
+  const handleFilter = () => {
+    isFilter
+      ? setRows(myRows)
+      : setRows(myRows.filter(row => row.errorBit === 'true'));
+    setIsFilter(!isFilter);
+  };
+
   const handleChangePage = (event: unknown, newPage: number) => {
     setPage(newPage);
   };
@@ -383,12 +444,18 @@ export default function EnhancedTable() {
   const isSelected = (trainId: number) => selected.indexOf(trainId) !== -1;
 
   const emptyRows =
-    rowsPerPage - Math.min(rowsPerPage, myRows.length - page * rowsPerPage);
+    rowsPerPage - Math.min(rowsPerPage, rows.length - page * rowsPerPage);
 
   return (
     <div className={classes.root}>
       <Paper className={classes.paper}>
-        <EnhancedTableToolbar numSelected={selected.length} />
+        <EnhancedTableToolbar
+          numSelected={selected.length}
+          handleFilter={handleFilter}
+          isFilter={isFilter}
+          update={update}
+          setUpdate={setUpdate}
+        />
         <TableContainer>
           <Table
             className={classes.table}
@@ -403,10 +470,10 @@ export default function EnhancedTable() {
               orderBy={orderBy}
               onSelectAllClick={handleSelectAllClick}
               onRequestSort={handleRequestSort}
-              rowCount={myRows.length}
+              rowCount={rows.length}
             />
             <TableBody>
-              {stableSort(myRows, getComparator(order, orderBy))
+              {stableSort(rows, getComparator(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
                   const isItemSelected = isSelected(row.trainId);
@@ -464,7 +531,7 @@ export default function EnhancedTable() {
         <TablePagination
           rowsPerPageOptions={[5, 10, 25]}
           component="div"
-          count={myRows.length}
+          count={rows.length}
           rowsPerPage={rowsPerPage}
           page={page}
           onChangePage={handleChangePage}
