@@ -25,49 +25,54 @@ import FilterListIcon from '@material-ui/icons/FilterList';
 import TextField from '@material-ui/core/TextField';
 import MenuItem from '@material-ui/core/MenuItem';
 
+import api from '../../utils/api';
+
 interface MyData {
-  trainId: number;
-  trainX: number;
-  trainY: number;
-  batteryTension: number;
-  railTension: number;
-  errorBit: string;
-  mesureDate: number;
+  id: number;
+  train: number;
+  X: number;
+  Y: number;
+  battery_voltage: number;
+  rail_voltage: number;
+  error_bit: number;
+  error_time: number;
   label: string;
-  updateDate: number;
+  check_time: number;
 }
 
 function createMyData(
-  trainId: number,
-  trainX: number,
-  trainY: number,
-  batteryTension: number,
-  railTension: number,
-  errorBit: string,
-  mesureDate: number,
+  id: number,
+  train: number,
+  X: number,
+  Y: number,
+  battery_voltage: number,
+  rail_voltage: number,
+  error_bit: number,
+  error_time: number,
   label: string,
-  updateDate: number
+  check_time: number
 ): MyData {
   return {
-    trainId,
-    trainX,
-    trainY,
-    batteryTension,
-    railTension,
-    errorBit,
-    mesureDate,
+    id,
+    train,
+    X,
+    Y,
+    battery_voltage,
+    rail_voltage,
+    error_bit,
+    error_time,
     label,
-    updateDate
+    check_time
   };
 }
 
 const myRows = [
-  createMyData(1, 0, 0, 12, 12, 'false', 1581308213, 'undefined', 0),
-  createMyData(2, 2, 2, 12, 12, 'false', 1581308313, 'undefined', 0),
-  createMyData(3, 3, 3, 12, 0, 'true', 1581308413, 'undefined', 0),
-  createMyData(4, 4, 4, 12, 0, 'true', 1581308513, 'rail', 1581408213),
-  createMyData(5, 5, 5, 0, 12, 'true', 1581308613, 'train', 1581409213),
-  createMyData(6, 6, 6, 12, 12, 'false', 1581308713, 'undefined', 0)
+  createMyData(1, 1, 0, 0, 12, 12, 0, 1581308213, 'undefined', 0),
+  createMyData(2, 2, 2, 2, 12, 12, 0, 1581308313, 'undefined', 0),
+  createMyData(3, 3, 3, 3, 12, 0, 1, 1581308413, 'undefined', 0),
+  createMyData(4, 4, 4, 4, 12, 0, 1, 1581308513, 'rail', 1581408213),
+  createMyData(5, 5, 5, 5, 0, 12, 1, 1581308613, 'train', 1581409213),
+  createMyData(6, 6, 6, 6, 12, 12, 0, 1581308713, 'undefined', 0)
 ];
 
 function descendingComparator<T>(a: T, b: T, orderBy: keyof T) {
@@ -113,51 +118,51 @@ interface HeadCell {
 
 const myHeadCells: HeadCell[] = [
   {
-    id: 'trainId',
+    id: 'train',
     numeric: true,
     disablePadding: false,
     label: 'Identifiant'
   },
   {
-    id: 'trainX',
+    id: 'X',
     numeric: true,
     disablePadding: false,
     label: 'Position X'
   },
 
   {
-    id: 'trainY',
+    id: 'Y',
     numeric: true,
     disablePadding: false,
     label: 'Position Y'
   },
   {
-    id: 'batteryTension',
+    id: 'battery_voltage',
     numeric: true,
     disablePadding: false,
     label: 'Tension Batterie'
   },
   {
-    id: 'railTension',
+    id: 'rail_voltage',
     numeric: true,
     disablePadding: false,
     label: 'Tension rail'
   },
   {
-    id: 'errorBit',
+    id: 'error_bit',
     numeric: false,
     disablePadding: false,
     label: "Bit d'erreur"
   },
   {
-    id: 'mesureDate',
+    id: 'error_time',
     numeric: true,
     disablePadding: false,
     label: 'Date Mesure'
   },
   { id: 'label', numeric: false, disablePadding: false, label: 'Label' },
   {
-    id: 'updateDate',
+    id: 'check_time',
     numeric: true,
     disablePadding: false,
     label: 'Date labelisation'
@@ -280,11 +285,19 @@ interface EnhancedTableToolbarProps {
   isFilter: boolean;
   update: string;
   setUpdate: (value: string) => void;
+  handleSubmitUpdate: () => void;
 }
 
 const EnhancedTableToolbar = (props: EnhancedTableToolbarProps) => {
   const classes = useToolbarStyles();
-  const { numSelected, handleFilter, isFilter, update, setUpdate } = props;
+  const {
+    numSelected,
+    handleFilter,
+    isFilter,
+    update,
+    setUpdate,
+    handleSubmitUpdate
+  } = props;
 
   const handleChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     setUpdate(event.target.value);
@@ -326,7 +339,7 @@ const EnhancedTableToolbar = (props: EnhancedTableToolbarProps) => {
             ))}
           </TextField>
           <Tooltip title="Delete">
-            <IconButton aria-label="delete">
+            <IconButton onClick={handleSubmitUpdate} aria-label="delete">
               <SendIcon />
             </IconButton>
           </Tooltip>
@@ -375,12 +388,12 @@ const useStyles = makeStyles((theme: Theme) =>
 export default function EnhancedTable() {
   const classes = useStyles();
   const [order, setOrder] = React.useState<Order>('asc');
-  const [orderBy, setOrderBy] = React.useState<keyof MyData>('trainId');
+  const [orderBy, setOrderBy] = React.useState<keyof MyData>('train');
   const [selected, setSelected] = React.useState<number[]>([]);
   const [page, setPage] = React.useState(0);
   const [rowsPerPage, setRowsPerPage] = React.useState(5);
   const [rows, setRows] = React.useState(
-    myRows.filter(row => row.errorBit === 'true')
+    myRows.filter(row => row.error_bit === 1)
   );
   const [isFilter, setIsFilter] = React.useState(true);
   const [update, setUpdate] = React.useState('undefined');
@@ -396,19 +409,19 @@ export default function EnhancedTable() {
 
   const handleSelectAllClick = (event: React.ChangeEvent<HTMLInputElement>) => {
     if (event.target.checked) {
-      const newSelecteds = rows.map(n => n.trainId);
+      const newSelecteds = rows.map(n => n.id);
       setSelected(newSelecteds);
       return;
     }
     setSelected([]);
   };
 
-  const handleClick = (event: React.MouseEvent<unknown>, trainId: number) => {
-    const selectedIndex = selected.indexOf(trainId);
+  const handleClick = (event: React.MouseEvent<unknown>, id: number) => {
+    const selectedIndex = selected.indexOf(id);
     let newSelected: number[] = [];
 
     if (selectedIndex === -1) {
-      newSelected = newSelected.concat(selected, trainId);
+      newSelected = newSelected.concat(selected, id);
     } else if (selectedIndex === 0) {
       newSelected = newSelected.concat(selected.slice(1));
     } else if (selectedIndex === selected.length - 1) {
@@ -426,7 +439,7 @@ export default function EnhancedTable() {
   const handleFilter = () => {
     isFilter
       ? setRows(myRows)
-      : setRows(myRows.filter(row => row.errorBit === 'true'));
+      : setRows(myRows.filter(row => row.error_bit === 1));
     setIsFilter(!isFilter);
   };
 
@@ -441,7 +454,34 @@ export default function EnhancedTable() {
     setPage(0);
   };
 
-  const isSelected = (trainId: number) => selected.indexOf(trainId) !== -1;
+  const handleSubmitUpdate = () => {
+    const intermediaryRows = myRows;
+    const rowsToUpdate: any[] = [];
+
+    intermediaryRows.forEach(myRow => {
+      if (selected.includes(myRow.id)) {
+        myRow.label = update;
+        rowsToUpdate.push(myRow);
+      }
+    });
+
+    isFilter
+      ? setRows(intermediaryRows.filter(row => row.error_bit === 1))
+      : setRows(intermediaryRows);
+
+    setSelected([]);
+
+    api
+      .post('/update', rowsToUpdate)
+      .then(function(response) {
+        console.log(response);
+      })
+      .catch(function(error) {
+        console.log(error);
+      });
+  };
+
+  const isSelected = (id: number) => selected.indexOf(id) !== -1;
 
   const emptyRows =
     rowsPerPage - Math.min(rowsPerPage, rows.length - page * rowsPerPage);
@@ -455,6 +495,7 @@ export default function EnhancedTable() {
           isFilter={isFilter}
           update={update}
           setUpdate={setUpdate}
+          handleSubmitUpdate={handleSubmitUpdate}
         />
         <TableContainer>
           <Table
@@ -476,21 +517,21 @@ export default function EnhancedTable() {
               {stableSort(rows, getComparator(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
-                  const isItemSelected = isSelected(row.trainId);
+                  const isItemSelected = isSelected(row.id);
                   const labelId = `enhanced-table-checkbox-${index}`;
 
                   return (
                     <TableRow
                       hover
-                      onClick={event => handleClick(event, row.trainId)}
+                      onClick={event => handleClick(event, row.id)}
                       role="checkbox"
                       aria-checked={isItemSelected}
                       tabIndex={-1}
-                      key={row.trainId}
+                      key={row.id}
                       selected={isItemSelected}
                       style={{
                         backgroundColor:
-                          row.updateDate === 0 && row.errorBit === 'true'
+                          row.check_time === 0 && row.error_bit === 1
                             ? 'red'
                             : 'white'
                       }}
@@ -507,16 +548,18 @@ export default function EnhancedTable() {
                         scope="row"
                         padding="none"
                       >
-                        Train n°{row.trainId}
+                        Train n°{row.train}
                       </TableCell>
-                      <TableCell align="right">{row.trainX}</TableCell>
-                      <TableCell align="right">{row.trainY}</TableCell>
-                      <TableCell align="right">{row.batteryTension}</TableCell>
-                      <TableCell align="right">{row.railTension}</TableCell>
-                      <TableCell align="right">{row.errorBit}</TableCell>
-                      <TableCell align="right">{row.mesureDate}</TableCell>
+                      <TableCell align="right">{row.X}</TableCell>
+                      <TableCell align="right">{row.Y}</TableCell>
+                      <TableCell align="right">{row.battery_voltage}</TableCell>
+                      <TableCell align="right">{row.rail_voltage}</TableCell>
+                      <TableCell align="right">
+                        {row.error_bit === 0 ? 'Erreur' : "Pas d'erreur"}
+                      </TableCell>
+                      <TableCell align="right">{row.error_time}</TableCell>
                       <TableCell align="right">{row.label}</TableCell>
-                      <TableCell align="right">{row.updateDate}</TableCell>
+                      <TableCell align="right">{row.check_time}</TableCell>
                     </TableRow>
                   );
                 })}
