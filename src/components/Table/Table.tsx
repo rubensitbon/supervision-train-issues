@@ -32,10 +32,12 @@ interface MyData {
   train: number;
   X: number;
   Y: number;
+  num_canton: number;
   battery_voltage: number;
   rail_voltage: number;
   error_bit: number;
-  error_time: number;
+  time_sec: number;
+  time_usec: number;
   label: string;
   check_time: number;
 }
@@ -88,18 +90,23 @@ const myHeadCells: HeadCell[] = [
     disablePadding: false,
     label: 'Identifiant'
   },
+  // {
+  //   id: 'X',
+  //   numeric: true,
+  //   disablePadding: false,
+  //   label: 'Position X'
+  // },
+  // {
+  //   id: 'Y',
+  //   numeric: true,
+  //   disablePadding: false,
+  //   label: 'Position Y'
+  // },
   {
-    id: 'X',
+    id: 'num_canton',
     numeric: true,
     disablePadding: false,
-    label: 'Position X'
-  },
-
-  {
-    id: 'Y',
-    numeric: true,
-    disablePadding: false,
-    label: 'Position Y'
+    label: 'Canton'
   },
   {
     id: 'battery_voltage',
@@ -120,10 +127,16 @@ const myHeadCells: HeadCell[] = [
     label: "Bit d'erreur"
   },
   {
-    id: 'error_time',
+    id: 'time_sec',
     numeric: true,
     disablePadding: false,
     label: 'Date Mesure'
+  },
+  {
+    id: 'time_usec',
+    numeric: true,
+    disablePadding: false,
+    label: 'Date usec Mesure'
   },
   { id: 'label', numeric: false, disablePadding: false, label: 'Label' },
   {
@@ -350,20 +363,25 @@ const useStyles = makeStyles((theme: Theme) =>
   })
 );
 
-export default function EnhancedTable() {
+interface props {
+  ip: string;
+  port: string;
+}
+
+export default function EnhancedTable({ ip, port }: props) {
   const classes = useStyles();
   const [order, setOrder] = React.useState<Order>('asc');
   const [orderBy, setOrderBy] = React.useState<keyof MyData>('train');
   const [selected, setSelected] = React.useState<number[]>([]);
   const [page, setPage] = React.useState(0);
-  const [rowsPerPage, setRowsPerPage] = React.useState(5);
+  const [rowsPerPage, setRowsPerPage] = React.useState(25);
   const [data, setData] = React.useState<MyData[]>([]);
   const [rows, setRows] = React.useState(data);
   const [isFilter, setIsFilter] = React.useState(true);
   const [update, setUpdate] = React.useState('undefined');
 
   React.useEffect(() => {
-    api.get('/fetch').then(result => {
+    api.get(`http://${ip}:${port}/fetch`).then(result => {
       setData(result.data);
       isFilter
         ? setRows(result.data.filter((row: MyData) => row.error_bit === 1))
@@ -445,7 +463,7 @@ export default function EnhancedTable() {
     setSelected([]);
 
     api
-      .post('/update', rowsToUpdate)
+      .post(`http://${ip}:${port}/fetch`, rowsToUpdate)
       .then(function(response) {
         console.log(response);
       })
@@ -490,10 +508,10 @@ export default function EnhancedTable() {
               {stableSort(rows, getComparator(order, orderBy))
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((row, index) => {
-                  console.log('IN MAP : row', row);
-                  console.log('IN MAP : row.id', row.id);
                   const isItemSelected = isSelected(row.id);
                   const labelId = `enhanced-table-checkbox-${index}`;
+                  const date_sec = new Date(row.time_sec);
+                  console.log('date_sec', date_sec);
 
                   return (
                     <TableRow
@@ -525,14 +543,16 @@ export default function EnhancedTable() {
                       >
                         Train n°{row.train}
                       </TableCell>
-                      <TableCell align="right">{row.X}</TableCell>
-                      <TableCell align="right">{row.Y}</TableCell>
+                      {/* <TableCell align="right">{row.X}</TableCell>
+                      <TableCell align="right">{row.Y}</TableCell> */}
+                      <TableCell align="right">{row.num_canton}</TableCell>
                       <TableCell align="right">{row.battery_voltage}</TableCell>
                       <TableCell align="right">{row.rail_voltage}</TableCell>
                       <TableCell align="right">
                         {row.error_bit === 1 ? 'Erreur' : "Pas d'erreur"}
                       </TableCell>
-                      <TableCell align="right">{row.error_time}</TableCell>
+                      <TableCell align="right">{`${date_sec.getDate()}/${date_sec.getDay()} : ${date_sec.getHours()}:${date_sec.getMinutes()}${date_sec.getSeconds()}`}</TableCell>
+                      <TableCell align="right">{row.time_usec}</TableCell>
                       <TableCell align="right">{row.label}</TableCell>
                       <TableCell align="right">{row.check_time}</TableCell>
                     </TableRow>
